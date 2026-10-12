@@ -65,6 +65,7 @@
 <body>
 <header>
   <div class="prompt"><small>Dessine la frontière de</small><span id="target">…</span></div>
+  <div class="prompt"><small>Score</small><span id="score">…</span></div>
   <div class="side">
     <select id="continent" aria-label="Continent">
       <option value="ALL">Tous les continents</option>
@@ -77,6 +78,7 @@
     </select>
     <button id="undo" title="Retour arrière">Annuler le trait</button>
     <button id="clear">Tout effacer</button>
+    <button id="evaluate">+1 point</button>
     <button id="validate" class="primary">Valider (Entrée)</button>
   </div>
 </header>
@@ -163,8 +165,10 @@ svg.on("pointercancel", endStroke);
 
 // Interface
 const targetEl = document.getElementById("target");
+const scoreEl = document.getElementById("score");
 const msgEl = document.getElementById("msg");
-let queue = [], current = null;
+let queue = [], current = null, scoreTot = 0, scoreAlreadyUpdated = false, reason = "";
+scoreEl.textContent = scoreTot;
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -219,12 +223,33 @@ function reveal() {
   addCap(current, "tg-cap");
   updateDots();
   const nb = neighborsIdx[current.idx].map(i => countries[i].fr);
-  showMsg(nb.length
-    ? "Voisins : " + nb.join(", ") + " — Entrée pour continuer"
-    : "Aucun voisin terrestre — Entrée pour continuer");
+  if (nb.length<1) {
+    showMsg("aucun voisin terrestre — Entrée pour continuer");
+    scoreTot = scoreTot + 1;
+    scoreAlreadyUpdated = true;
+    reason = "pas de voisins de tte manière"
+  }
+  else {
+    showMsg("Voisins : " + nb.join(", ") + " — Entrée pour continuer");
+  }
+  scoreEl.textContent = scoreTot;
 }
 
+function evaluateDrawing() {
+  if (scoreAlreadyUpdated) {
+    showMsg("Point déjà accordé car " + reason);
+  }
+  else {
+    scoreTot = scoreTot + 1;
+    scoreAlreadyUpdated = true;
+  }
+  reason = "déjà cliqué sur boutton '+1 point' ";
+  scoreEl.textContent = scoreTot;
+}
+
+
 function next() {
+  scoreAlreadyUpdated = false;
   revealed = false;
   revealG.selectAll("*").remove();
   clearDrawing();
@@ -264,6 +289,7 @@ function validateOrNext() {
 document.getElementById("validate").addEventListener("click", validateOrNext);
 document.getElementById("undo").addEventListener("click", undo);
 document.getElementById("clear").addEventListener("click", clearAll);
+document.getElementById("evaluate").addEventListener("click", evaluateDrawing);
 document.addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); validateOrNext(); }
   else if (e.key === "Backspace" || (e.key === "z" && (e.ctrlKey || e.metaKey))) { e.preventDefault(); undo(); }
