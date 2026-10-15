@@ -111,6 +111,7 @@
 </main>
 
 <script src="listes.js"></script>
+<script src="pays_perso.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script>
@@ -129,6 +130,25 @@ countries.forEach(f => {
   f.playable = !!a2 && a2 !== "AQ";
   f.fr = a2 ? names.of(a2) : f.properties.name;
 });
+// Pays personnalisés (définis dans pays_perso.js)
+(typeof PAYS_PERSO !== "undefined" ? PAYS_PERSO : []).forEach(p => {
+  const ring = p.coords.slice();
+  const [fx, fy] = ring[0], [lx, ly] = ring[ring.length - 1];
+  if (fx !== lx || fy !== ly) ring.push(ring[0]);
+  const f = { type: "Feature", id: p.code, properties: { name: p.nom },
+              geometry: { type: "Polygon", coordinates: [ring] } };
+  if (d3.geoArea(f) > 2 * Math.PI) ring.reverse();   // d3 attend le sens horaire
+  f.a2 = p.code;
+  f.info = { k: p.continent, c: p.capitale, ll: p.capitaleLL };
+  f.playable = true;
+  f.fr = p.nom;
+  f.perso = true;
+  countries.push(f);
+});
+
+// Peut ouvrir fichier dans un navigateur, taper F12 et ensuite cliquer sur la console pr afficher ceci :
+console.log("Non jouables :", countries.filter(f => !f.playable).map(f => f.properties.name));
+console.log("Sans capitale (mode capitales) :", countries.filter(f => f.playable && !f.info.c).map(f => f.fr));
 
 const projection = d3.geoNaturalEarth1().fitSize([W, H], { type: "Sphere" });
 const path = d3.geoPath(projection);

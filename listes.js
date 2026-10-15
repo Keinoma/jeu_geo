@@ -12,7 +12,7 @@
 const LISTES = [
   {
     nom: "Maghreb",
-    pays: ["MA", "DZ", "TN", "LY", "MR"],
+    pays: ["MA", "DZ", "TN", "LY", "MR", "XA"],
   },
   {
     nom: "Europe de l'Ouest",
@@ -24,6 +24,6 @@ const LISTES = [
   },
   {
     nom: "Iles cheloues",
-    pays: ["BS", "FK", "SB", "TF", "TL", "TT", "TW", "VU", "DO", "PG", "BN"],
+    pays: ["BS", "FK", "SB", "FJ", "TF", "TL", "TT", "TW", "VU", "DO", "PG", "BN"],
   },
 ];
