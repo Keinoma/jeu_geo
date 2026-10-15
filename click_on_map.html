@@ -92,6 +92,7 @@
         <option value="AS">Asie</option>
         <option value="EU">Europe</option>
         <option value="OC">Océanie</option>
+        <optgroup label="Mes listes" id="listes"></optgroup>
       </select>
     </label>
     <label>Je cherche
@@ -109,6 +110,7 @@
   <div class="hint">Molette ou pincement pour zoomer, glisser pour se déplacer</div>
 </main>
 
+<script src="listes.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script>
@@ -182,6 +184,24 @@ const showCapLabel = document.getElementById("showCapLabel");
 
 let queue = [], current = null, good = 0, asked = 0, locked = false, timer = null;
 let mode = "country", continent = "ALL";
+// Listes personnalisées (définies dans listes.js)
+const listes = (typeof LISTES !== "undefined") ? LISTES : [];
+const listesG = document.getElementById("listes");
+listes.forEach((l, i) => {
+  const o = document.createElement("option");
+  o.value = "liste:" + i;
+  o.textContent = l.nom;
+  listesG.appendChild(o);
+});
+if (!listes.length) listesG.remove();
+const known = new Set(countries.filter(c => c.playable).map(c => c.a2));
+listes.forEach(l => l.pays.filter(c => !known.has(c)).forEach(c =>
+  console.warn("listes.js : code inconnu « " + c + " » dans la liste « " + l.nom + " »")));
+function inSelection(d) {
+  if (continent === "ALL") return true;
+  if (continent.startsWith("liste:")) return listes[+continent.slice(6)].pays.includes(d.a2);
+  return d.info.k === continent;
+}
 let waitHandler = null;
 function clearWait() {
   if (waitHandler) { document.removeEventListener("click", waitHandler); waitHandler = null; }
@@ -218,7 +238,7 @@ function updateScore() { scoreEl.textContent = good + " / " + asked; }
 
 function inFilter(d) {
   if (!d.playable) return false;
-  if (continent !== "ALL" && d.info.k !== continent) return false;
+  if (!inSelection(d)) return false;
   if (mode === "capital" && !d.info.c) return false;
   return true;
 }
@@ -283,12 +303,14 @@ function finish(d, ok, clicked, event) {
   showMsg(text);
   updateScore();
 
+  waitForClick(); // pas attendre, vrm dés qu'on clique ça passe à la suite
+  /*
   if (ok) {
     timer = setTimeout(next, mode === "country" ? (showCap ? 2000 : 1000) : 3000);
   }
   else {
     waitForClick();
-  }}
+  } */}
 
 function answer(d, event) {
   if (locked || !current) return;
@@ -308,7 +330,7 @@ function start() {
   labelEl.textContent = "Clique sur";
   showCapEl.disabled = mode === "capital";
   showCapLabel.classList.toggle("disabled", mode === "capital");
-  paths.classed("out", d => !inFilter(d));
+  paths.classed("out", d => !continent.startsWith("liste:") && !inFilter(d));
   queue = shuffle(countries.filter(inFilter));
   resetZoom();
   next();

@@ -75,6 +75,7 @@
       <option value="AS">Asie</option>
       <option value="EU">Europe</option>
       <option value="OC">Océanie</option>
+      <optgroup label="Mes listes" id="listes"></optgroup>
     </select>
     <button id="undo" title="Retour arrière">Annuler le trait</button>
     <button id="clear">Tout effacer</button>
@@ -88,6 +89,7 @@
   <div class="hint">Clic gauche : dessiner · Molette : zoomer · Clic droit + glisser : déplacer · Entrée : valider / continuer</div>
 </main>
 
+<script src="listes.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script>
@@ -103,6 +105,7 @@ const neighborsIdx = topojson.neighbors(geoms);   // pays qui partagent une fron
 countries.forEach((f, i) => {
   const a2 = DATA.map[String(f.id).padStart(3, "0")];
   f.idx = i;
+  f.a2 = a2;
   f.info = (a2 && DATA.info[a2]) || {};
   f.playable = !!a2 && a2 !== "AQ";
   f.fr = a2 ? names.of(a2) : f.properties.name;
@@ -296,9 +299,29 @@ document.addEventListener("keydown", e => {
 });
 
 const contEl = document.getElementById("continent");
+
+// Listes personnalisées (définies dans listes.js)
+const listes = (typeof LISTES !== "undefined") ? LISTES : [];
+const listesG = document.getElementById("listes");
+listes.forEach((l, i) => {
+  const o = document.createElement("option");
+  o.value = "liste:" + i;
+  o.textContent = l.nom;
+  listesG.appendChild(o);
+});
+if (!listes.length) listesG.remove();
+const known = new Set(countries.filter(c => c.playable).map(c => c.a2));
+listes.forEach(l => l.pays.filter(c => !known.has(c)).forEach(c =>
+  console.warn("listes.js : code inconnu « " + c + " » dans la liste « " + l.nom + " »")));
+function inSelection(d, sel) {
+  if (sel === "ALL") return true;
+  if (sel.startsWith("liste:")) return listes[+sel.slice(6)].pays.includes(d.a2);
+  return d.info.k === sel;
+}
+
 function start() {
-  const cont = contEl.value;
-  queue = shuffle(countries.filter(c => c.playable && (cont === "ALL" || c.info.k === cont)));
+  const sel = contEl.value;
+  queue = shuffle(countries.filter(c => c.playable && inSelection(c, sel)));
   next();
 }
 contEl.addEventListener("change", () => { contEl.blur(); start(); });
