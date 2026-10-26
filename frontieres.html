@@ -51,6 +51,15 @@
   .cap { stroke: #0a1f2e; stroke-width: 1; vector-effect: non-scaling-stroke; }
   .cap.tg-cap { fill: #4cc38a; }
   .cap.nb-cap { fill: #fff; }
+  .multi { position: relative; font: .85rem system-ui, sans-serif; }
+  .multi summary { list-style: none; cursor: pointer; color: var(--ink); background: #12303f; border: 1px solid #3a5a70; border-radius: 6px; padding: .35rem .6rem; user-select: none; }
+  .multi summary::-webkit-details-marker { display: none; }
+  .multi summary::after { content: " ▾"; }
+  .multi .panel { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 16rem; max-height: 60vh; overflow: auto; background: var(--bar); border: 1px solid #3a5a70; border-radius: 8px; padding: .5rem .7rem; display: flex; flex-direction: column; gap: .35rem; color: var(--ink); }
+  .side .multi .panel { left: auto; right: 0; }
+  .multi .panel h4 { margin: .4rem 0 .1rem; font-size: .75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .multi .panel label { display: flex; align-items: center; gap: .5rem; cursor: pointer; color: var(--ink); }
+  #listesBox { display: flex; flex-direction: column; gap: .35rem; }
   #msg {
     position: absolute; left: 50%; bottom: 1rem; transform: translateX(-50%);
     font-family: system-ui, sans-serif; font-size: .95rem; padding: .45rem .9rem;
@@ -67,16 +76,20 @@
   <div class="prompt"><small>Dessine la frontière de</small><span id="target">…</span></div>
   <div class="prompt"><small>Score</small><span id="score">…</span></div>
   <div class="side">
-    <select id="continent" aria-label="Continent">
-      <option value="ALL">Tous les continents</option>
-      <option value="AF">Afrique</option>
-      <option value="NA">Amérique du Nord et centrale</option>
-      <option value="SA">Amérique du Sud</option>
-      <option value="AS">Asie</option>
-      <option value="EU">Europe</option>
-      <option value="OC">Océanie</option>
-      <optgroup label="Mes listes" id="listes"></optgroup>
-    </select>
+    <details class="multi" id="multi">
+      <summary id="multiLabel">Tous les pays</summary>
+      <div class="panel">
+        <h4>Continents</h4>
+        <label><input type="checkbox" value="AF"> Afrique</label>
+        <label><input type="checkbox" value="NA"> Amérique du Nord et centrale</label>
+        <label><input type="checkbox" value="SA"> Amérique du Sud</label>
+        <label><input type="checkbox" value="AS"> Asie</label>
+        <label><input type="checkbox" value="EU"> Europe</label>
+        <label><input type="checkbox" value="OC"> Océanie</label>
+        <div id="listesBox"><h4>Mes listes</h4></div>
+        <button type="button" id="multiClear">Tout décocher</button>
+      </div>
+    </details>
     <button id="undo" title="Retour arrière">Annuler le trait</button>
     <button id="clear">Tout effacer</button>
     <button id="evaluate">+1 point</button>
@@ -321,33 +334,47 @@ document.addEventListener("keydown", e => {
   else if (e.key === "Backspace" || (e.key === "z" && (e.ctrlKey || e.metaKey))) { e.preventDefault(); undo(); }
 });
 
-const contEl = document.getElementById("continent");
-
-// Listes personnalisées (définies dans listes.js)
+// Sélection multiple : continents + listes personnalisées (listes.js)
 const listes = (typeof LISTES !== "undefined") ? LISTES : [];
-const listesG = document.getElementById("listes");
+const multi = document.getElementById("multi");
+const multiLabel = document.getElementById("multiLabel");
+const listesBox = document.getElementById("listesBox");
 listes.forEach((l, i) => {
-  const o = document.createElement("option");
-  o.value = "liste:" + i;
-  o.textContent = l.nom;
-  listesG.appendChild(o);
+  const lab = document.createElement("label");
+  lab.innerHTML = '<input type="checkbox" value="liste:' + i + '"> ';
+  lab.append(l.nom);
+  listesBox.appendChild(lab);
 });
-if (!listes.length) listesG.remove();
+if (!listes.length) listesBox.hidden = true;
 const known = new Set(countries.filter(c => c.playable).map(c => c.a2));
 listes.forEach(l => l.pays.filter(c => !known.has(c)).forEach(c =>
   console.warn("listes.js : code inconnu « " + c + " » dans la liste « " + l.nom + " »")));
-function inSelection(d, sel) {
-  if (sel === "ALL") return true;
-  if (sel.startsWith("liste:")) return listes[+sel.slice(6)].pays.includes(d.a2);
-  return d.info.k === sel;
+
+function selectedValues() {
+  return [...multi.querySelectorAll("input:checked")].map(i => i.value);
 }
+function inSelection(d, sel = selectedValues()) {
+  if (!sel.length) return true;   // rien de coché = tous les pays
+  return sel.some(v => v.startsWith("liste:")
+    ? listes[+v.slice(6)].pays.includes(d.a2)
+    : d.info.k === v);
+}
+function updateMultiLabel() {
+  const noms = [...multi.querySelectorAll("input:checked")].map(i => i.parentElement.textContent.trim());
+  multiLabel.textContent = !noms.length ? "Tous les pays"
+    : noms.length <= 2 ? noms.join(" + ") : noms.length + " sélections";
+}
+multi.addEventListener("change", e => { e.target.blur(); updateMultiLabel(); start(); });
+document.getElementById("multiClear").addEventListener("click", () => {
+  multi.querySelectorAll("input").forEach(i => i.checked = false);
+  updateMultiLabel(); start();
+});
+document.addEventListener("pointerdown", e => { if (!multi.contains(e.target)) multi.open = false; });
 
 function start() {
-  const sel = contEl.value;
-  queue = shuffle(countries.filter(c => c.playable && inSelection(c, sel)));
+  queue = shuffle(countries.filter(c => c.playable && inSelection(c)));
   next();
 }
-contEl.addEventListener("change", () => { contEl.blur(); start(); });
 start();
 </script>
 </body>
