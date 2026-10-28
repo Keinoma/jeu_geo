@@ -25,5 +25,5 @@ const PAYS_PERSO = [
     capitaleLL: [-30, 10],
     coords: [[-35, 5], [-25, 5], [-25, 15], [-35, 15]],   // un carré au milieu de l'Atlantique
     voisins: [],
-  },
+  }
 ];
